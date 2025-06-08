@@ -544,7 +544,7 @@ function AppContent() {
               isLoading={isLoading}
             />
           ) : (
-            <Navigate to="/login" replace />
+            <Navigate to="/" replace />
           )
         }
       />

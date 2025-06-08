@@ -1,14 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../App.css';
 import '../styles/Welcome.css';
 
 interface WelcomeProps {
   onGetStarted: () => void;
-  isAuthenticated?: boolean;
+  isAuthenticated: boolean;
 }
 
 const Welcome: React.FC<WelcomeProps> = ({ onGetStarted, isAuthenticated = false }) => {
   const navigate = useNavigate();
+
+  const benefitPhrases = [
+    "Max out your rewards",
+    "Discover new categories",
+    "Effortless savings",
+    "Use the right card, every time",
+    "Never leave money on the table"
+  ];
+
+  const [currentBenefitIndex, setCurrentBenefitIndex] = useState(0);
+  const [animationClass, setAnimationClass] = useState('');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimationClass('fade-out');
+      setTimeout(() => {
+        setCurrentBenefitIndex((prevIndex) => 
+          (prevIndex + 1) % benefitPhrases.length
+        );
+        setAnimationClass('fade-in');
+      }, 500); // Duration of fade-out
+    }, 3000); // Change every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="welcome-container">
@@ -49,26 +75,28 @@ const Welcome: React.FC<WelcomeProps> = ({ onGetStarted, isAuthenticated = false
 
       <div className="welcome-content">
         {/* Hero Section */}
-        <div className="hero-section">
+        <section className="hero-section">
           <div className="hero-content">
-            <h2>Tell us which cards you own. We'll do the rest.</h2>
-            <p className="hero-subtext">
-              No bank logins. No card numbers. No personal data. Just a smarter way to use the cards you already have.
-            </p>
-            
-            <div className="requirements">
-              <h3>✔ All we ask is:</h3>
-              <ul>
-                <li>Your email and a password to create your account</li>
-                <li>The names of the credit cards you use (e.g., Chase Freedom Flex, Amex Blue Cash Preferred)</li>
-              </ul>
-            </div>
-            
-            <p className="analysis-text">
-              🧠 We analyze which card gives you the best cashback across categories like groceries, gas, dining, travel, and more.
-            </p>
+            <h2>Your Smartest Way to Maximize Cashback.</h2>
+            <p className={`tagline ${animationClass}`}>{benefitPhrases[currentBenefitIndex]}</p>
+            <p className="hero-subtext">Effortlessly find the best credit card for every purchase. SmartSwipe analyzes your cards and spending habits to recommend the highest cashback rewards, ensuring you never leave money on the table. Secure, smart, and simple.</p>
+            {isAuthenticated ? (
+              <button 
+                className="get-started-button"
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button 
+                className="get-started-button"
+                onClick={onGetStarted}
+              >
+                Get Started Now
+              </button>
+            )}
           </div>
-        </div>
+        </section>
 
         {/* Trust Section */}
         <div className="trust-section">
