@@ -34,6 +34,7 @@ interface LayoutProps {
   loadProfile: () => void;
   exportRecommendations: () => void;
   isLoading: boolean; // For profile actions
+  onLogout: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -58,6 +59,7 @@ const Layout: React.FC<LayoutProps> = ({
   loadProfile,
   exportRecommendations,
   isLoading,
+  onLogout,
 }) => {
   const renderSection = () => {
     switch (activeSection) {
@@ -119,10 +121,19 @@ const Layout: React.FC<LayoutProps> = ({
         {renderSection()}
       </main>
 
+      <div className="top-right-controls">
+        <button className="theme-toggle" onClick={toggleTheme}>
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
+        <button className="logout-button" onClick={onLogout}>
+          Logout
+        </button>
+      </div>
+
       {/* Theme Toggle Button */}
-      <button className="theme-toggle" onClick={toggleTheme}>
+      {/* <button className="theme-toggle" onClick={toggleTheme}>
         {theme === 'light' ? '🌙' : '☀️'}
-      </button>
+      </button> */}
 
       {/* Profile Actions (Hidden for now) */}
       {/* <div className="profile-actions">\n        <button className="profile-button" onClick={saveProfile} disabled={isLoading}>\n          {isLoading ? <span className="loading"></span> : '💾'} Save Profile\n        </button>\n        <button className="profile-button" onClick={loadProfile}>\n          📂 Load Profile\n        </button>\n        <button className="export-button" onClick={exportRecommendations}>\n          📤 Export\n        </button>\n      </div> */}

@@ -15,9 +15,10 @@ import {
 } from 'chart.js'
 import './App.css'
 import { CreditCard, SpendingAnalysis } from './types'
-
-// Import Layout component
 import Layout from './components/Layout'
+import Login from './components/Login'
+import Signup from './components/Signup'
+import { auth, user } from './services/api'
 
 // Register ChartJS components
 ChartJS.register(
@@ -34,8 +35,17 @@ ChartJS.register(
 
 type Section = 'dashboard' | 'cards' | 'recommendations' | 'faq' | 'contact' | 'chat'
 type Theme = 'light' | 'dark'
+type AuthMode = 'login' | 'signup'
 
 function App() {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const token = localStorage.getItem('token')
+    return !!token
+  })
+  const [authMode, setAuthMode] = useState<AuthMode>('login')
+  const [authError, setAuthError] = useState('')
+
   // State management
   const [selectedCards, setSelectedCards] = useState<CreditCard[]>([])
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
@@ -64,6 +74,92 @@ function App() {
     estimatedAnnualSavings: 0,
     bestCardCombinations: []
   })
+
+  // Load user data on authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserData()
+    }
+  }, [isAuthenticated])
+
+  // Authentication handlers
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      setAuthError('')
+      const response = await auth.login(email, password)
+      localStorage.setItem('token', response.token)
+      setIsAuthenticated(true)
+    } catch (error: any) {
+      setAuthError(error.response?.data?.message || 'Login failed')
+    }
+  }
+
+  const handleSignup = async (name: string, email: string, password: string) => {
+    try {
+      setAuthError('')
+      const response = await auth.signup(name, email, password)
+      localStorage.setItem('token', response.token)
+      setIsAuthenticated(true)
+    } catch (error: any) {
+      setAuthError(error.response?.data?.message || 'Signup failed')
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    setIsAuthenticated(false)
+    setSelectedCards([])
+    setRecommendations([])
+    setSpendingAnalysis({
+      monthlySpending: {
+        Dining: 500,
+        Grocery: 800,
+        Gas: 300,
+        Travel: 400,
+        Entertainment: 200,
+        OnlineShopping: 300,
+        Drugstores: 100,
+        HomeImprovement: 200,
+        Streaming: 50,
+        Utilities: 150
+      },
+      totalMonthlySpending: 3000,
+      estimatedAnnualSavings: 0,
+      bestCardCombinations: []
+    })
+  }
+
+  // Load user data
+  const loadUserData = async () => {
+    try {
+      const userData = await user.getProfile()
+      if (userData.selectedCards) {
+        const cards = userData.selectedCards.map((cardId: string) => 
+          creditCards.find(card => card.id === cardId)
+        ).filter(Boolean) as CreditCard[]
+        setSelectedCards(cards)
+      }
+      if (userData.spendingAnalysis) {
+        setSpendingAnalysis(userData.spendingAnalysis)
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+    }
+  }
+
+  // Save user data when it changes
+  useEffect(() => {
+    if (isAuthenticated && selectedCards.length > 0) {
+      const cardIds = selectedCards.map(card => card.id)
+      user.updateCards(cardIds).catch(console.error)
+    }
+  }, [selectedCards, isAuthenticated])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      user.updateSpending(spendingAnalysis).catch(console.error)
+    }
+  }, [spendingAnalysis, isAuthenticated])
 
   // Functions that modify state or handle logic
   const handleCardSelection = (card: CreditCard) => {
@@ -358,10 +454,21 @@ function App() {
     return { categoryData, cardDistributionData, cashbackTrendData }
   }
 
+  if (!isAuthenticated) {
+    return authMode === 'login' ? (
+      <Login onLogin={handleLogin} onSwitchToSignup={() => setAuthMode('signup')} />
+    ) : (
+      <Signup onSignup={handleSignup} onSwitchToLogin={() => setAuthMode('login')} />
+    )
+  }
+
   return (
     <Layout
+      theme={theme}
+      toggleTheme={toggleTheme}
       activeSection={activeSection}
       setActiveSection={setActiveSection}
+      onLogout={handleLogout}
       selectedCards={selectedCards}
       handleCardSelection={handleCardSelection}
       getRecommendations={getRecommendations}
@@ -375,8 +482,6 @@ function App() {
       handleChatSubmit={handleChatSubmit}
       setChatInput={setChatInput}
       setChatMessages={setChatMessages}
-      theme={theme}
-      toggleTheme={toggleTheme}
       saveProfile={saveProfile}
       loadProfile={loadProfile}
       exportRecommendations={exportRecommendations}
