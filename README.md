@@ -28,7 +28,7 @@ A full-stack application that helps users maximize their credit card rewards by 
 
 ### 1. Clone the Repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/knitinjaideep/credit-card-cashback-optimizer
 cd cashback-rewards
 ```
 
@@ -177,4 +177,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For support, email [your-email] or open an issue in the repository.
+For support, email knitinjaideep@gmail.com or open an issue in the repository.

@@ -1,29 +1,38 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/Login.css';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
-  onSwitchToSignup: () => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await onLogin(email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to login');
+    } finally {
+      setIsLoading(false);
     }
-    onLogin(email, password);
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
+    <div className="auth-container">
+      <div className="auth-box">
         <h2>Welcome Back</h2>
+        {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -33,6 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
+              required
             />
           </div>
           <div className="form-group">
@@ -43,19 +53,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
+              required
             />
           </div>
-          {error && <div className="error-message">{error}</div>}
-          <button type="submit" className="login-button">
-            Login
+          <button 
+            type="submit" 
+            className="auth-button"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
-          <div className="switch-form">
-            Don't have an account?{' '}
-            <button type="button" className="switch-button" onClick={onSwitchToSignup}>
-              Sign Up
-            </button>
-          </div>
         </form>
+        <div className="switch-form">
+          Don't have an account?{' '}
+          <button 
+            className="switch-button"
+            onClick={() => navigate('/signup')}
+          >
+            Sign up
+          </button>
+        </div>
       </div>
     </div>
   );

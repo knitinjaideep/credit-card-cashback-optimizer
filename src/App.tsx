@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { creditCards, categories } from './data/creditCards'
 import type { Recommendation } from './types/index'
 import {
@@ -19,6 +20,8 @@ import Layout from './components/Layout'
 import Login from './components/Login'
 import Signup from './components/Signup'
 import { auth, user } from './services/api'
+import Dashboard from './components/Dashboard'
+import Welcome from './components/Welcome'
 
 // Register ChartJS components
 ChartJS.register(
@@ -37,14 +40,16 @@ type Section = 'dashboard' | 'cards' | 'recommendations' | 'faq' | 'contact' | '
 type Theme = 'light' | 'dark'
 type AuthMode = 'login' | 'signup'
 
-function App() {
-  // Authentication state
+function AppContent() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const token = localStorage.getItem('token')
     return !!token
   })
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [authError, setAuthError] = useState('')
+  const [userData, setUserData] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   // State management
   const [selectedCards, setSelectedCards] = useState<CreditCard[]>([])
@@ -75,19 +80,39 @@ function App() {
     bestCardCombinations: []
   })
 
-  // Load user data on authentication
   useEffect(() => {
     if (isAuthenticated) {
       loadUserData()
     }
   }, [isAuthenticated])
 
-  // Authentication handlers
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      user.getProfile()
+        .then(response => {
+          setUserData(response)
+          setIsAuthenticated(true)
+        })
+        .catch(() => {
+          localStorage.removeItem('token')
+          setUserData(null)
+          setIsAuthenticated(false)
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
   const handleLogin = async (email: string, password: string) => {
     try {
       setAuthError('')
       const response = await auth.login(email, password)
       localStorage.setItem('token', response.token)
+      setUserData(response.user)
       setIsAuthenticated(true)
     } catch (error: any) {
       setAuthError(error.response?.data?.message || 'Login failed')
@@ -99,6 +124,7 @@ function App() {
       setAuthError('')
       const response = await auth.signup(name, email, password)
       localStorage.setItem('token', response.token)
+      setUserData(response.user)
       setIsAuthenticated(true)
     } catch (error: any) {
       setAuthError(error.response?.data?.message || 'Signup failed')
@@ -107,6 +133,7 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    setUserData(null)
     setIsAuthenticated(false)
     setSelectedCards([])
     setRecommendations([])
@@ -129,7 +156,6 @@ function App() {
     })
   }
 
-  // Load user data
   const loadUserData = async () => {
     try {
       const userData = await user.getProfile()
@@ -144,10 +170,13 @@ function App() {
       }
     } catch (error) {
       console.error('Error loading user data:', error)
+      // Handle error appropriately
+      localStorage.removeItem('token')
+      setUserData(null)
+      setIsAuthenticated(false)
     }
   }
 
-  // Save user data when it changes
   useEffect(() => {
     if (isAuthenticated && selectedCards.length > 0) {
       const cardIds = selectedCards.map(card => card.id)
@@ -161,7 +190,6 @@ function App() {
     }
   }, [spendingAnalysis, isAuthenticated])
 
-  // Functions that modify state or handle logic
   const handleCardSelection = (card: CreditCard) => {
     setSelectedCards(prev => {
       const isSelected = prev.some(c => c.id === card.id)
@@ -218,7 +246,6 @@ function App() {
     }, 1000)
   }
 
-  // Theme management
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
@@ -228,7 +255,6 @@ function App() {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light')
   }
 
-  // Profile save/load (currently hidden)
   const saveProfile = () => {
     setIsLoading(true)
     const profile = {
@@ -280,10 +306,9 @@ function App() {
     return category.replace(/([A-Z])/g, ' $1').trim();
   }
 
-  // Calculate savings initially and whenever selected cards or spending changes (add dependency later)
   useEffect(() => {
     calculateSavings()
-  }, [selectedCards, spendingAnalysis.monthlySpending]) // Depend on selectedCards and monthlySpending
+  }, [selectedCards, spendingAnalysis.monthlySpending])
 
   const calculateSavings = () => {
     if (selectedCards.length === 0) return
@@ -454,39 +479,84 @@ function App() {
     return { categoryData, cardDistributionData, cashbackTrendData }
   }
 
-  if (!isAuthenticated) {
-    return authMode === 'login' ? (
-      <Login onLogin={handleLogin} onSwitchToSignup={() => setAuthMode('signup')} />
-    ) : (
-      <Signup onSignup={handleSignup} onSwitchToLogin={() => setAuthMode('login')} />
-    )
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   return (
-    <Layout
-      theme={theme}
-      toggleTheme={toggleTheme}
-      activeSection={activeSection}
-      setActiveSection={setActiveSection}
-      onLogout={handleLogout}
-      selectedCards={selectedCards}
-      handleCardSelection={handleCardSelection}
-      getRecommendations={getRecommendations}
-      removeCard={removeCard}
-      recommendations={recommendations}
-      formatCategoryName={formatCategoryName}
-      spendingAnalysis={spendingAnalysis}
-      getChartData={getChartData}
-      chatMessages={chatMessages}
-      chatInput={chatInput}
-      handleChatSubmit={handleChatSubmit}
-      setChatInput={setChatInput}
-      setChatMessages={setChatMessages}
-      saveProfile={saveProfile}
-      loadProfile={loadProfile}
-      exportRecommendations={exportRecommendations}
-      isLoading={isLoading}
-    />
+    <Routes>
+      <Route path="/" element={<Welcome onGetStarted={handleGetStarted} isAuthenticated={isAuthenticated} />} />
+      <Route
+        path="/login"
+        element={
+          !isAuthenticated ? (
+            <Login onLogin={handleLogin} />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          !isAuthenticated ? (
+            <Signup onSignup={handleSignup} />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          isAuthenticated ? (
+            <Layout
+              selectedCards={selectedCards}
+              recommendations={recommendations}
+              activeSection={activeSection}
+              setActiveSection={setActiveSection}
+              chatMessages={chatMessages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              handleChatSubmit={handleChatSubmit}
+              theme={theme}
+              toggleTheme={toggleTheme}
+              onLogout={handleLogout}
+              handleCardSelection={handleCardSelection}
+              removeCard={removeCard}
+              getRecommendations={getRecommendations}
+              spendingAnalysis={spendingAnalysis}
+              setSpendingAnalysis={setSpendingAnalysis}
+              formatCategoryName={formatCategoryName}
+              getChartData={getChartData}
+              setChatMessages={setChatMessages}
+              saveProfile={saveProfile}
+              loadProfile={loadProfile}
+              exportRecommendations={exportRecommendations}
+              isLoading={isLoading}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+    </Routes>
+  )
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   )
 }
 
